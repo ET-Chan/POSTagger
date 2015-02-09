@@ -1,14 +1,18 @@
 import java.io.{PrintWriter, FileOutputStream, ObjectOutputStream}
 import java.nio.file.{FileVisitOption, Files}
+import java.util.logging.{Level, Logger}
+
 
 import scala.io.Source
 import scala.reflect.io.Path
 import scala.util.Random
+import Utils._
 
 /**
  * Created by et on 1/31/15.
  */
 object CorpusManager {
+  val log = Logger.getLogger("CM")
   def combineAll(p:Path,t:Path)={
     val pw = new PrintWriter(t.path)
     val s = p.walk.filter(_.path.toLowerCase.endsWith("pos")).map(p=>Source.fromFile(p.path).mkString).foreach(pw.println(_))
@@ -28,5 +32,22 @@ object CorpusManager {
       else rpw.println(DefaultDelim+s)
     })
     lpw.close();rpw.close()
+  }
+  def reportAllException(p:Path)={
+    log.info("HELLO")
+    val par = new Parser
+    try {
+      p.walk.filter(_.path.toLowerCase.endsWith("pos")).flatMap(par.parse).flatten.foreach(q=>{val k = q._2})
+    }catch{
+      case pe:ParseException=>{
+        val errPath = p.walk.toStream
+          .filter(_.path.toLowerCase.endsWith("pos"))
+          .filter(pp=>Source.fromFile(pp.path).mkString.contains(
+            pe.lineStr
+          ))
+          .head
+        log.log(Level.INFO,s"At ${errPath}, line ${pe.lineStr}, parsing error")
+      }
+    }
   }
 }
