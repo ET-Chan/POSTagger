@@ -2,7 +2,7 @@ import java.io.{FileInputStream, FileOutputStream, ObjectInputStream, ObjectOutp
 
 import BIDMat.MatFunctions._
 import BIDMat.SciFunctions._
-import BIDMat.{IMat, DMat, FMat, FND}
+import BIDMat._
 import Utils._
 
 import scala.Predef._
@@ -10,7 +10,8 @@ import scala.collection.immutable.Stream._
 import scala.collection.mutable.HashMap
 
 class HMMTrig extends Serializable{
-
+//  Mat.checkMKL
+  val printIters = 1
   var lock = false
   var T1:FMat=null
   var T2:FMat=null
@@ -34,13 +35,13 @@ class HMMTrig extends Serializable{
     val trm = tr.map(_.flatMap(padding))
 
     learnEmission(wdm)
-    learnTransitionAda(trm)
+    learnTransition(trm)
     lock = true
   }
   def cleanTransTable()={
     T1 = null;T2=null;T3=null;
   }
-  def learnTransitionAda(t:Seq[Seq[Token]]):Unit={
+  def learnTransition(t:Seq[Seq[Token]]):Unit={
     val sz = E.size
     val delta:Float = 1
     T1 = zeros(sz,1)
@@ -68,9 +69,13 @@ class HMMTrig extends Serializable{
       }
     }
     //bigram count
-    T2 = T3.sum(2).toFMat(sz,sz)//
+    T2 = T3.sum(2).toFMat(sz,sz)
+    //beware of the END and ENDTAG PROBLEM,
+    T2(toIdx(STOPTAG),toIdx(STOPTAG1)) = T3(?,toIdx(STOPTAG),toIdx(STOPTAG1)).sum(0)(0,0,0)
     //unigram count
     T1 = sum(T2,2)
+    //beware of the ENDTAG PROBLEM
+    T1(toIdx(STOPTAG1)) = sum(T2(?,toIdx(STOPTAG1)),1)
     //learn adaptively
     P = T3 + delta
     for{i<- 0 until sz
@@ -260,7 +265,7 @@ class HMMTrig extends Serializable{
       //remove the first and last element
       val pp = p.tail.dropRight(1)
       val c = arr.map(_._2)
-      if(i% 100 == 0)
+      if(i% printIters == 0)
         println(s"Validating ${i}th section")
       i += 1
       (p.size,pp.zip(c).count(e => e._1 == e._2))
