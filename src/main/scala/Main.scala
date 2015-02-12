@@ -37,7 +37,7 @@ object Main extends App{
 //
 //    val r:Seq[Double] = for(i<- 0 until iter) yield {
 //        CorpusManager.split(ratio,"res/outcorp","res/lCorp","res/tCorp")
-//        val h = new HMMTrig()
+//        val h = new HMMTrigKatz()
 //        h.learn(p.parse("res/lCorp").flatten,p.parse("res/lCorp"))
 //        println(s"Learned complete with $i")
 //        h.validate(p.parse("res/tCorp"))
@@ -50,11 +50,11 @@ object Main extends App{
 //    println(s"Avg: ${sum/r.size}")
 
 //        StdIn.readLine()
-    val h = new HMMTrigKatz()
-    h.learn(p.parse("res/lCorp").flatten,p.parse("res/lCorp"))
-    h.save
-//      val h = new HMMTrigKatz()
-//      h.load
-//      println(h.validate(p.parse("res/tCorp")))
-//    println(h.predict(Seq(STARTSTR,"I","do","believe","that","he","is","an","idiot",".",STOPSTR).toStream).mkString(" "))
+//    val h = new HMMTrigKatz()
+//    h.learn(p.parse("res/lCorp").flatten,p.parse("res/lCorp"))
+//    h.save
+      val h = new HMMTrigKatz()
+      h.load
+    println(h.predict(Seq(STARTSTR,"you","are","a","bastard",".",STOPSTR).toStream).mkString(" "))
+        println(h.validate(p.parse("res/tCorp")))
 }

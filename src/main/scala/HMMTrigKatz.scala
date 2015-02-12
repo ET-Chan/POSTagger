@@ -7,6 +7,7 @@ import Utils._
  * Created by et on 2/11/15.
  */
 class HMMTrigKatz extends HMMTrig {
+  val K = 5
   override def learnTransition(t: Seq[Seq[(String, Tag)]]) = {
     val V = E.size
     T1 = zeros(V,1)
@@ -36,65 +37,89 @@ class HMMTrigKatz extends HMMTrig {
     //good turing for tri,bi unigram
     val R3 = goodEstimate(T3.data.map(_.toInt))
     val R2 = goodEstimate(T2.data.map(_.toInt))
-    //use the estimate, fix the T2 and T3
-    val T2T = zeros(V,V)
-    val T3T = FND(V,V,V)
-    for{i<- 0 until V // TODO: vectorize this ugly loop
-        j<- 0 until V}{
-        T2T(i,j) = R2(T2(i,j).toInt)
-      for{ k<- 0 until V}{
-        T3T(i,j,k) = R3(T3(i,j,k).toInt)
-      }
-    }
+
 
     //calculate Pb2 first
     val Pb2 = zeros(V,V)
     //calculate alpha for pb2
     var alpha = zeros(V,1)
-    //could i do it in matrix manner? NO, tricky but works
-    //build two matricies, T, F
-//    var U = 1 - sum((T2 > 0) *@ T2T / T1.t , 2) //this is problematic, 0.0*NaN = NaN, 0.0/0.0 = NaN, kill everything instantly
-//    var D = sum((T2 <= 0) *@ T1.t,2)     //the divisor is
-    //I give up, just use ugly loop
+    //firstly deal with >0 entry
+    for{i<- 0 until V}{
+//      var sum = 0.0
+      for{j<- 0 until V}{
+        val r = T2(i,j).toInt
+        if(r>0) {
+          val dr =
+            if (r>K) 1
+          else
+            R2(r)
+//          sum += dr*r
+          Pb2(i, j) = dr*r / T1(i)
+        }
+    }
+//      if(sum > T1(i))
+//         println("error, it is impossible for bigger than that.")
+  }
+    //deal with ==0 entry, calculate alpha first
+    //notice that Pb2 contains no NaN entry, safe to use matrix
+    val NZM2 = (T2 > 0)
+ //   alpha = (1 - sum(NZM2 *@ Pb2,2)) / (1 - sum(NZM2 *@ Pb1.t,2))
     for{i<- 0 until V}{
       var U = 0.0
       var D = 0.0
-      for{j<- 0 until V}{
-        if(T2(i,j)>0) U += T2T(i,j)/T1(j)
-        else D += Pb1(j)
+      for{j<-0 until V}{
+        if(T2(i,j)>0) {
+          U+= Pb2(i,j)
+          D += Pb1(j)
+        }
       }
-      alpha(i) = (1-U)/D
+      alpha(i) = ((1-U)/(1-D)).toFloat
+
     }
 
     for{i<- 0 until V
         j<- 0 until V}{
       val r = T2(i,j).toInt
-      Pb2(i,j) = if(r>0) R2(r)/T1(i) else alpha(i)*Pb1(j)
-      if(Pb2(i,j)==0 || Pb2(i,j).isNaN){
-        println("found out zero entry, it should not be though")
+      if(r==0){
+        Pb2(i,j) = alpha(i)*Pb1(j)
       }
     }
-
     //Pb2 fin, to Pb3, //TODO: vectorize this crazy loop
     alpha = zeros(V,V)
     val Pb3 = FND(V,V,V)
     for{i<- 0 until V
+        j<- 0 until V
+        k<- 0 until V}{
+      val r = T3(i,j,k).toInt
+      if(r>0){
+        val dr = if (r>K) 1 else R3(r)
+        Pb3(i,j,k) = dr * r / T2(i,j)
+      }
+   }
+    //deal with zero entry
+    //I will give up matrix form and rewrite everythin to loop form, at least at this stage
+    //code become ridiculously complex and redundant.
+    alpha = zeros(V,V)
+    for{i<- 0 until V
         j<- 0 until V}{
       var U = 0.0
       var D = 0.0
-      for(k<- 0 until V){
-        if(T3(i,j,k)>0) U += T3T(i,j,k)/T2(i,j)
-        else D+= Pb2(j,k)
+      for{k<-0 until V}{
+        if(T3(i,j,k)>0) {
+          U+= Pb3(i,j,k)
+          D += Pb2(j,k)
+        }
       }
-      alpha(i,j) = ((1-U) / D).toFloat
+      alpha(i,j) = ((1-U)/(1-D)).toFloat
     }
     for{i<- 0 until V
         j<- 0 until V
         k<- 0 until V}{
       val r = T3(i,j,k).toInt
-      Pb3(i,j,k) = if(r>0) R3(r)/T2(i,j) else alpha(i,j)*Pb2(j,k)
+      if(r==0){
+        Pb3(i,j,k) = alpha(i,j)*Pb2(j,k)
+      }
     }
-
 
     P = Pb3
     //finally, finished, hell!
@@ -102,17 +127,23 @@ class HMMTrigKatz extends HMMTrig {
   private def goodEstimate(i:Seq[Int]):FMat={
     //returning a column vector, with rsharp, originally,
     //now change to estimate d_r
-    val t = i.groupBy(e=>e).mapValues(s=>s.length)//another smoothing here
-    val rmax = t.keySet.max//n_{r+1} needs to be pretendded as existed
+    val n = i.groupBy(e=>e).mapValues(s=>s.length)//another smoothing here
+    //sanity check
+    assert(n(46) == i.count(_==46))
+    val rmax = n.keySet.max//n_{r+1} needs to be pretendded as existed
     val arr = Array.tabulate(rmax+2){idx=>{
-          t.getOrElse(idx,0)
+          n.getOrElse(idx,0)
         }
     }
     val di = arr.zip(arr.tail).map(e=>{
         val nrp1 = e._2
         val nr=e._1
-        (nrp1/nr.toFloat)
+        nrp1 / nr.toFloat
     })
-    (col(0 to rmax) + 1)*@ col(di)//each element plus 1
+    val rs = (col(0 to rmax) + 1 )*@ col(di)//each element plus 1
+    val fixTerm = n(K+1).toFloat/n(1)*(K+1)//this fixTerm need to be float, cost 1 hour to find this bug.
+    //calculate dr now
+    val ret = (rs/col(0 to rmax) - fixTerm )/(1-fixTerm) //each element divided by their index r and minus fixTerm, divided by 1-fixTerm
+    ret
   }
 }
