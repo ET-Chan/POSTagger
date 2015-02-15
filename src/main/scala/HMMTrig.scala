@@ -9,9 +9,16 @@ import scala.Predef._
 import scala.collection.immutable.Stream._
 import scala.collection.mutable.HashMap
 
+/**
+ * Created by et on 10/02/15.
+ * This is implementing adaptive smoothing
+ * It is also the base class of all trigram hmm learner
+ * The design will be soon rewritten though
+ */
+
 class HMMTrig extends Serializable{
 //  Mat.checkMKL
-  val printIters = 1
+  var printIters = 10
   var lock = false
   var T1:FMat=null
   var T2:FMat=null
@@ -41,30 +48,17 @@ class HMMTrig extends Serializable{
   def cleanTransTable()={
     T1 = null;T2=null;T3=null;
   }
-  def learnTransition(t:Seq[Seq[Token]]):Unit={
+  def count(t:Seq[Seq[Token]]):Unit={
     val sz = E.size
-    val delta:Float = 1
     T1 = zeros(sz,1)
     T2 = zeros(sz,sz)
     T3 = FND(sz,sz,sz)
-//    T = sdzeros(sz*sz,sz*sz)
-    P = FND(sz,sz,sz)
     for(s<-t){
       val st = s.map(e=>toIdxArr(e._2))
-//      //for unigram,_2 is the tag
-//      st.flatten.foreach(e=>{T1(e)+=1})
-      //for bigram
-//      for{(ps,cs)<- st.zip(st.tail)
-//        p<-ps
-//        c<-cs
-//      }{
-//        T2(p,c)+=1
-//      }
-      //for trigram
       for{(ps,ms,cs)<-(st,st.tail,st.tail.tail).zipped
-        p<-ps
-        m<-ms
-        c<-cs}{
+          p<-ps
+          m<-ms
+          c<-cs}{
         T3(p,m,c) += 1
       }
     }
@@ -76,6 +70,18 @@ class HMMTrig extends Serializable{
     T1 = sum(T2,2)
     //beware of the ENDTAG PROBLEM
     T1(toIdx(STOPTAG1)) = sum(T2(?,toIdx(STOPTAG1)),1)
+    //sanity-check
+    assert(T1.nc == 1)
+    assert(T2.nr == sz)
+    assert(T2.nc == sz)
+    assert(T2.nr == sz)
+  }
+
+  def learnTransition(t:Seq[Seq[Token]]):Unit={
+    val sz = E.size
+    val delta:Float = 1
+    P = FND(sz,sz,sz)
+    count(t)
     //learn adaptively
     P = T3 + delta
     for{i<- 0 until sz
@@ -83,8 +89,6 @@ class HMMTrig extends Serializable{
       P(i,j,?) /= (delta*sz+T2(i,j))
     }
 
-    //initiate T table for viberti algorithm
-//    initTV()
     cleanTransTable()
   }
 //  private def initTV()={
@@ -257,8 +261,8 @@ class HMMTrig extends Serializable{
     r
   }
   def validate(su:Seq[Seq[Token]]):Double={
-    var i = 0
-    val (s,c) = su.map(_.toArray).map(arr=>{
+    var i = 1
+    val (s,c) = su.map(arr=>{
       //each entry of s stores count of each section,
       // c stores count of each correct prediction
       val p = predictSeg(arr.map(_._1).toStream)

@@ -15,17 +15,11 @@ import BIDMat.Plotting._
 
 object matTst extends App{
 
-  val arr = new Array[FMat](10)
-  val oos = new ObjectOutputStream(new FileOutputStream("./res/testMul"))
-  for(i<-0 until 10){
-    oos.writeObject(Random.nextString(100))
-  }
-  oos.close()
-  val ois = new ObjectInputStream(new FileInputStream("./res/testMul"))
-  for(i<-0 until 10){
-    val obj:String = ois.readObject().asInstanceOf[String]
-    println (obj)
-  }
+  for{i<- 0 until 10
+      j<-0 until 10
+      k<- 0 until 10}{
 
+    println(i,j,k)
+  }
 
 }
