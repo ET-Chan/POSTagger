@@ -9,14 +9,15 @@ import java.util.logging.Logger
 import Utils._
 
 import scala.collection.parallel.ForkJoinTaskSupport
+import scala.concurrent.forkjoin.ForkJoinPool
 import scala.io.StdIn
 import scala.reflect.io.{Directory, Path}
 import scala.util.Random
 
 object Main extends App{
-  val iter = 10
+  val iter = 8
   val ratio = 0.9
-  val thread = 5
+  val thread = 4
 //  CorpusManager.combineAll("res/WSJ-2-12","./res/outcorp")
 //  p.parse("""/home/et/IdeaProjects/POSTagger/res/WSJ-2-12/02/WSJ_0200.POS""").head.foreach(println(_))
 
@@ -51,8 +52,12 @@ object Main extends App{
 
   val range = (0 until iter).par
   range.tasksupport = new ForkJoinTaskSupport(
-    new scala.concurrent.forkjoin.ForkJoinPool(thread))
-  for(d<- Array(0.1,0.2,0.4,0.5,0.6,0.7,0.8,0.9,1)) {
+    new ForkJoinPool(thread))
+
+  val params = Array(0)
+
+
+  for(d<- params) {
 //  StdIn.readLine()
 //   val prev = System.currentTimeMillis()
 
@@ -61,7 +66,7 @@ object Main extends App{
       val lCorp = "res/lCorp" + Random.nextInt()
       val tCorp = "res/tCorp" + Random.nextInt()
       CorpusManager.split(ratio, "res/outcorp", lCorp, tCorp)
-      val h = new HMMTrigKN(d)
+      val h = new HMMTrigKNM()
       h.printIters = Int.MaxValue
       h.learn(p.parse(lCorp).flatten, p.parse(lCorp))
 //      println(s"Learned complete with $i")
@@ -72,7 +77,7 @@ object Main extends App{
     })
     val sum = r.sum
 //    println (s"Time: ${(System.currentTimeMillis - prev)}")
-    println(s"d: ${d}, Avg: ${sum/ r.size}")
+    println(s"Params: ${d}, Avg: ${sum/ r.size}")
   }
 
 //        StdIn.readLine()

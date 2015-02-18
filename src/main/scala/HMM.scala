@@ -42,6 +42,7 @@ class HMM extends Serializable{
     }
     val Ts = sum(T,2)//sum along with column, return a row vector
     T = T/Ts
+    T(toIdx(STOPTAG),?) = 0.0//fix the end NaN problem, otherwise it will pollute
   }
   def learnEmission(t:Seq[Token]):Unit={
     val m = t.flatMap(e => {

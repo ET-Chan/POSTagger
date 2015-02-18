@@ -1,4 +1,5 @@
-import java.io.{FileInputStream, FileOutputStream, ObjectInputStream, ObjectOutputStream}
+import java.io._
+import java.nio.file.Files
 
 import BIDMat.MatFunctions._
 import BIDMat.SciFunctions._
@@ -8,6 +9,8 @@ import Utils._
 import scala.Predef._
 import scala.collection.immutable.Stream._
 import scala.collection.mutable.HashMap
+import scala.collection.parallel.mutable
+import scala.io.Source
 
 /**
  * Created by et on 10/02/15.
@@ -23,6 +26,7 @@ class HMMTrig extends Serializable{
   var T1:FMat=null
   var T2:FMat=null
   var T3:FND=null
+//  var PP = Array.ofDim[Double](0,0,0)
 //  var T:DMat = null
   var P:FND=null
   var E:Array[HashMap[String,Double]] = null
@@ -43,7 +47,15 @@ class HMMTrig extends Serializable{
 
     learnEmission(wdm)
     learnTransition(trm)
-    lock = true
+
+//    val V = E.size
+//    PP = Array.ofDim[Double](V,V,V)
+//    for{i<- 0 until V
+//        j<- 0 until V
+//        k<- 0 until V}{
+//      PP(i)(j)(k) = P(i,j,k)
+//    }
+//    lock = true
   }
   def cleanTransTable()={
     T1 = null;T2=null;T3=null;
@@ -137,43 +149,6 @@ class HMMTrig extends Serializable{
     //predict a short segment
     predictSeg(STARTSTR #:: hl.toStream).append(predict(tl))
   }
-//  private def predictSeg(s:Stream[String]):Stream[Tag]={
-//    //First of all, the string must be prepend and append with STARTSTR and STOPSTR respectively.
-//    assert(s.head == STARTSTR && s.last == STOPSTR)
-//    //PREPAND STARTSTR1 and APPEND STOPSTR1, reduce trivial cases
-//    val sp = ((STARTSTR1 #:: s) :+ STOPSTR1).toArray
-//    //then, viberti algorithm, completely the same with bigram case
-//    //except we now have each state represent a bigram
-//    //init dp table
-//    val V = E.size
-//    val dp = dzeros(V*V,V*V)
-//    val sz = sp.length
-//    val R = izeros(sz,V*V)
-//    R(0,?) = -1 //it is nonsense to backtrack from 0 and 1
-//    R(1,?) = -1
-//
-//    //STARTTAG1 and STARTTAG bounds to be the start TAG of the
-//    // sequence, other could just go to sleep
-//    dp(toIdx(STARTTAG1,STARTTAG),?) = 1.0
-//    for(i<-2 until sz){//No need to start from 0
-//      val ep = getEmissionProbTri(sp(i))//is this efficient? I dont really care for now.
-//      val Tr = dp *@ T
-//      val (maxv,maxi) = maxi2(Tr,1)
-//      R(i,?) = maxi
-//      dp ~ (dp*@0) + (maxv.t *@ ep)
-//    }
-//    val res = new Array[Int](sz)
-//    res(sz - 1) = maxi2(dp(?,0))._2(0,0)
-//    res(0) = toIdx(STARTTAG1)
-//    for(i<-sz-2 to 1 by -1){//0th and 1st is unnecessary, it must be
-//      res(i) = R(i+1,res(i+1))
-//    }
-//    //TODO
-//    res.map(e=>{
-//      toTag(uni2Bi(e)._2)
-//    }).toStream
-//  }
-
 
   //viberti iterative
   //matrix is just too freaking slow, because of non-fully supported sparse matrix in scala
@@ -194,13 +169,13 @@ class HMMTrig extends Serializable{
         DMat(P(?,?,i).toFMat(V,V))
       }
     }
-    prev(toIdx(STARTTAG1),toIdx(STARTTAG))=1.0//everything is impossible
+    prev(toIdx(STARTTAG1),toIdx(STARTTAG))=1.0//everything is possible
     val curr = dzeros(V,V)
     for(i<-2 until sz){//No need to start from 0
       val ep = getEmissionProb(sp(i))
       for(k<-0 until V){
         val (maxv,maxi) = maxi2(prev *@ PP(k))
-        curr(?,k) = maxv^*ep(k)
+        curr(?,k) = maxv^*ep(k)//problematic code
         R(i)(k,?) = maxi
       }
 
@@ -234,6 +209,65 @@ class HMMTrig extends Serializable{
 //    Array("").toStream
 
   }
+//  private def predictSeg(s:Stream[String]):Stream[Tag]={
+//    val V = E.size
+//    assert(s.head == STARTSTR && s.last == STOPSTR)
+//    //PREPAND STARTSTR1 and APPEND STOPSTR1, reduce trivial cases
+//    val sp = ((STARTSTR1 #:: s) :+ STOPSTR1).toArray
+//    val sz = sp.length
+//    val R = FND(sz,V,V)
+//    R(0,?,?) = -1
+//    R(1,?,?) = -1
+//    val prev = dzeros(V,V)
+//    val curr = dzeros(V,V)
+//    prev(toIdx(STARTTAG1),toIdx(STARTTAG)) = 1.0 // other is impossible
+//
+//    for{w<-2 until sz}{
+//      val ep = getEmissionProb(sp(w))
+//      for{k<- 0 until V
+//          j<- 0 until V}{
+//        //determining the curr(j,k)
+//        var max = Double.MinValue
+//        for{i<- 0 until V}{
+//          val transProb = prev(i,j) * PP(i)(j)(k)
+//          if(transProb > max){
+//            max = transProb ; R(w,j,k) = i
+//          }
+//        }
+//        curr(j,k) = max * ep(k)
+//      }
+//      prev <-- curr
+//    }
+//    //traceback
+//    def max(mat:DMat):(Int,Int)={
+//      val (m,n) = size(mat)
+//      var (x,y) = (-1,-1)
+//      var maxv = Double.MinValue
+//      for{i<-0 until m
+//          j<-0 until n}{
+//        if(mat(i,j)>maxv){
+//          maxv = mat(i,j)
+//          x = i;y=j
+//        }
+//      }
+//      (x,y)
+//    }
+//    val res = new Array[(Int,Int)](sz)
+//    res(sz - 1) = max(curr)
+//    for(i<-sz-2 to 1 by -1){//0th and 1st is unnecessary, it must be
+//      val (j,k) = res(i+1)
+//      res(i) = (R(i+1,j,k).toInt,j)
+//    }
+//    res(0) = (-1,toIdx(STARTTAG1))
+//    res.map(e=>toTag(e._2)).toStream
+//
+//    //    res(sz - 1) = maxi2(dp(?,0))._2(0,0)
+//    //    res(0) = toIdx(STARTTAG1)
+////    Array("").toStream
+//
+//
+//
+//  }
 
 
   //we need a pair of method, to transform (i,j) into a monster int
@@ -262,6 +296,7 @@ class HMMTrig extends Serializable{
   }
   def validate(su:Seq[Seq[Token]]):Double={
     var i = 1
+    val sb = new StringBuilder()
     val (s,c) = su.map(arr=>{
       //each entry of s stores count of each section,
       // c stores count of each correct prediction
@@ -272,8 +307,17 @@ class HMMTrig extends Serializable{
       if(i% printIters == 0)
         println(s"Validating ${i}th section")
       i += 1
+//      var sum = 0.0
+//      if(!pp.zip(c).forall(e=>e._1==e._2)){
+//        sb.append(s"Correct: ${arr.mkString(" ")}\n")
+//        sb.append(s"Wrong: ${arr.map(_._1).zip(pp).mkString(" ")}\n")
+//        sb.append("---------------------------------------------------\n")
+//      }
       (p.size,pp.zip(c).count(e => e._1 == e._2))
     }).unzip
+//    val pw = new PrintWriter(new File("log.txt"))
+//    pw.print(sb)
+//    pw.close()
     c.sum.toDouble/s.sum
   }
 
