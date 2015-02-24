@@ -1,12 +1,16 @@
-import scala.collection.immutable.Stream._
-import scala.reflect.io.Path
+package bigram
+
+import misc.Utils
 import Utils._
+
+import scala.collection.immutable.Stream._
 //import breeze.linalg._
-import scala.collection.mutable.HashMap
-import BIDMat.{CMat, CSMat, DMat, Dict, FMat, FND, GMat, GIMat, GSMat, HMat, IDict, Image, IMat, LMat, Mat, SMat, SBMat, SDMat}
 import BIDMat.MatFunctions._
 import BIDMat.SciFunctions._
+import BIDMat.{DMat, FMat, Mat}
+
 import scala.Predef._
+import scala.collection.mutable.HashMap
 
 /**
  * Created by et on 1/31/15.
@@ -17,33 +21,71 @@ import scala.Predef._
 class HMM extends Serializable{
   Mat.checkMKL
   var lock = false
-  var T=dzeros(0,0)
+  var T1:FMat=null
+  var T2:FMat=null
+  var P:DMat = null
   var E:Array[HashMap[String,Double]] = null
   var M:Map[String,Int] = null//table for tagToIdx
   var BM:Array[String] = null//table for idxToTag
-  def learn(wd:Seq[Token],bi:Seq[Token]):Unit={
+  def learn(wd:Seq[Token],bi:Seq[Seq[Token]]):Unit={
     if(lock) throw new Exception("The model is learned!")
     learnEmission(wd)
     learnTransition(bi)
     lock = true
   }
-  def learnTransition(t:Seq[Token]):Unit={
-    T = dzeros(E.size,E.size)
-    val startID = toIdx(STARTTAG);val endID = toIdx(STOPTAG)
-    val ts = t.map(_._2).map(toIdxArr)//map to int tag
-    for{ (ps,cs)<- ts.zip(ts.tail)//words may have multiple tags, iterate all of them
+
+  def count(t:Seq[Seq[Token]]):Unit={
+    val sz = E.size
+    T1 = zeros(sz,1)
+    T2 = zeros(sz,sz)
+    for(s<-t){
+      val st = s.map(e=>toIdxArr(e._2))
+      for{(ps,ms)<-(st,st.tail).zipped
           p<-ps
-          c<-cs
-    }{
-      if(!((p==startID && c==endID) | (p==endID && c==startID))) {
-        //Not counting START,END. it is ugly fix, but works.
-        T(p, c) += 1
+          m<-ms}{
+        T2(p,m) += 1
       }
     }
-    val Ts = sum(T,2)//sum along with column, return a row vector
-    T = T/Ts
-    T(toIdx(STOPTAG),?) = 0.0//fix the end NaN problem, otherwise it will pollute
+    //unigram count
+    T1 = sum(T2,2)
+    //beware of the ENDTAG PROBLEM
+    T1(toIdx(STOPTAG)) = sum(T2(?,toIdx(STOPTAG)),1)
+    //sanity-check
+    assert(T1.nc == 1)
+    assert(T2.nr == sz)
+    assert(T2.nc == sz)
+    assert(T2.nr == sz)
   }
+
+
+  def learnTransition(t:Seq[Seq[Token]]):Unit={
+    P = dzeros(E.size,E.size)
+    count(t)
+    T2 += 1.0
+    T1 += E.size
+    P = T2/T1
+    P(toIdx(STOPTAG),?) = 0.0//fix the end NaN problem, otherwise it will pollute
+
+
+  }
+
+//  def learnTransition(t:Seq[Token]):Unit={
+//    T = dzeros(E.size,E.size)
+//    val startID = toIdx(STARTTAG);val endID = toIdx(STOPTAG)
+//    val ts = t.map(_._2).map(toIdxArr)//map to int tag
+//    for{ (ps,cs)<- ts.zip(ts.tail)//words may have multiple tags, iterate all of them
+//          p<-ps
+//          c<-cs
+//    }{
+//      if(!((p==startID && c==endID) | (p==endID && c==startID))) {
+//        //Not counting START,END. it is ugly fix, but works.
+//        T(p, c) += 1
+//      }
+//    }
+//    val Ts = sum(T,2)//sum along with column, return a row vector
+//    T = T/Ts
+//    T(toIdx(STOPTAG),?) = 0.0//fix the end NaN problem, otherwise it will pollute
+//  }
   def learnEmission(t:Seq[Token]):Unit={
     val m = t.flatMap(e => {
               val (s, tag) = e
@@ -82,6 +124,14 @@ class HMM extends Serializable{
     predictSeg(STARTSTR #:: hl.toStream).append(predict(tl))
   }
 
+
+//  private def splitSeqToken(in:Seq[Token]):Seq[Seq[Token]]={
+//    if(in.isEmpty) return Stream.Empty
+//    assert(in.head == STARTSTR)
+//    val (hl,tl) = in.tail.span(e=> !e._2.content)
+//
+//  }
+
   private def getEmissionProb(s:String):DMat= {
     //construct a conlumn, grabbing the emission probability of this string for every tag.
     val r = dcol(E.zipWithIndex.map(h => h._1.getOrElse(s, 0.0)).toList)
@@ -104,27 +154,28 @@ class HMM extends Serializable{
   }
 
   private def predictSeg(s:Stream[String]):Stream[Tag]={
+    val T = P
     val arr = s.toArray
     val sz = arr.size
     val res = new Array[Int](sz)
     //sanity-check
     assert(arr.head == STARTSTR && arr.last == STOPSTR)
     //the first entry should be directly the emit probability of STARTSTR
-    val P = dones(E.size,E.size)//P is the main matrix, calculating the probability
+    val Pc = dones(E.size,E.size)//P is the main matrix, calculating the probability
                                 // for each combination of tags at each iteration
-    P ~ (P *@ 0) + getEmissionProb(STARTSTR) //which is tedious, but have to do this to assign the vector to each column of P
+    Pc ~ (Pc *@ 0) + getEmissionProb(STARTSTR) //which is tedious, but have to do this to assign the vector to each column of P
 
     val R = izeros(sz,E.size)//R is for tracing back
     R(0,?) = -1 //undefined
     for(i<- 1 until sz){//Terminate at zero, no need to handle i=0
       val eP = getEmissionProb(arr(i))
-      val Tr = T *@ P//T element wise multiply P
+      val Tr = T *@ Pc//T element wise multiply P
       val (maxv,maxi) = maxi2(Tr,1)
       R(i,?) = maxi //maxi is the index vector for largest predecessors, making it in R table
-      P ~ (P *@ 0) + (maxv.t *@ eP)//this is P = maxv.t *@ eP, due to the restriction on BIDMat
+      Pc ~ (Pc *@ 0) + (maxv.t *@ eP)//this is P = maxv.t *@ eP, due to the restriction on BIDMat
     }
     //viberti algorithm in Matrix form
-    res(sz-1) = maxi2(P(?,0))._2(0,0)
+    res(sz-1) = maxi2(Pc(?,0))._2(0,0)
     for(i<- sz-2 to 0 by -1){//tracing back.
       res(i) = R(i+1,res(i+1))
     }
@@ -134,7 +185,7 @@ class HMM extends Serializable{
 //  def read(p:Path):Unit={}
   def printEmission()=println(E)
 
-  def printTransition()=println(T)
+  def printTransition()=println(P)
   def toIdx(s:Tag):Int=M(s)
   def toIdxArr(tag:Tag):Seq[Int]=tag.split("""\|""").map(toIdx)
 

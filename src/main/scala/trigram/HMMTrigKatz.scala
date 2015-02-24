@@ -1,13 +1,16 @@
-import BIDMat.{FMat, FND}
+package trigram
+
 import BIDMat.MatFunctions._
 import BIDMat.SciFunctions._
+import BIDMat.{FMat, FND}
+import misc.Utils
 import Utils._
 
 /**
  * Created by et on 2/11/15.
  * This is implementing Katz smoothing
  */
-class HMMTrigKatz(K:Int = 0,K2:Int=0,beta:Double=1.0) extends HMMTrig {
+class HMMTrigKatz(K:Int = 0,K2:Int=0) extends HMMTrig {
   override def learnTransition(t: Seq[Seq[(String, Tag)]]) = {
     val V = E.size
     count(t)

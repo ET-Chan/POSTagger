@@ -1,12 +1,11 @@
-import java.io.{PrintWriter, FileOutputStream, ObjectOutputStream}
-import java.nio.file.{FileVisitOption, Files}
-import java.util.logging.{Level, Logger}
+package misc
 
+import java.io.PrintWriter
+import java.util.logging.{Level, Logger}
 
 import scala.io.Source
 import scala.reflect.io.Path
 import scala.util.Random
-import Utils._
 
 /**
  * Created by et on 1/31/15.

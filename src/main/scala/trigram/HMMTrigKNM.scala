@@ -1,7 +1,10 @@
+package trigram
+
 import BIDMat.FND
-import Utils._
-import BIDMat.SciFunctions._
 import BIDMat.MatFunctions._
+import BIDMat.SciFunctions._
+import misc.Utils
+import Utils._
 
 /**
  * Created by et on 15/02/15.

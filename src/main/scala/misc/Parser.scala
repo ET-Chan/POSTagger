@@ -1,13 +1,11 @@
-import java.util.Scanner
+package misc
 
+import misc.Utils._
+
+import scala.collection.immutable.Stream._
 import scala.io.Source
 import scala.reflect.io.Path
-import Utils._
-import scala.Stream._
 import scala.util.control.NonFatal
-import scala.util.matching.Regex.Match
-import scala.util.matching._
-import scala.collection.immutable.Stream._
 /**
  * Created by et on 1/31/15.
  */

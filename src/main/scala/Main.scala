@@ -6,7 +6,10 @@ import java.io.{FileInputStream, ObjectInputStream, ObjectOutputStream, FileOutp
 import java.nio.file.{Paths, Files}
 import java.util.logging.Logger
 
+import misc.{Parser, CorpusManager, Utils}
 import Utils._
+import bigram._
+import trigram._
 
 import scala.collection.parallel.ForkJoinTaskSupport
 import scala.concurrent.forkjoin.ForkJoinPool
@@ -15,7 +18,7 @@ import scala.reflect.io.{Directory, Path}
 import scala.util.Random
 
 object Main extends App{
-  val iter = 8
+  val iter = 12
   val ratio = 0.9
   val thread = 4
 //  CorpusManager.combineAll("res/WSJ-2-12","./res/outcorp")
@@ -26,7 +29,7 @@ object Main extends App{
 
 //  val r:Seq[Double] = for(i<- 0 until iter) yield {
 //      CorpusManager.split(ratio,"res/outcorp","res/lCorp","res/tCorp")
-//      val h = new HMM()
+//      val h = new bigram.HMM()
 //      h.learn(p.parse("res/lCorp").flatten,p.parse("res/lCorp").flatten)
 //      println(s"Dealing with $i")
 //      h.validate(p.parse("res/tCorp"))
@@ -54,8 +57,10 @@ object Main extends App{
   range.tasksupport = new ForkJoinTaskSupport(
     new ForkJoinPool(thread))
 
-  val params = Array(0)
-
+  val params = Array(4)
+//  val lCorp = "res/lCorp" + Random.nextInt()
+//  val tCorp = "res/tCorp" + Random.nextInt()
+//  CorpusManager.split(ratio, "res/outcorp", lCorp, tCorp)
 
   for(d<- params) {
 //  StdIn.readLine()
@@ -66,25 +71,39 @@ object Main extends App{
       val lCorp = "res/lCorp" + Random.nextInt()
       val tCorp = "res/tCorp" + Random.nextInt()
       CorpusManager.split(ratio, "res/outcorp", lCorp, tCorp)
-      val h = new HMMTrigKNM()
-      h.printIters = Int.MaxValue
+      val hknm = new HMMTrigKNM
+      val hkn = new HMMTrigKN
+      val hwb = new HMMTrigWB
+      val hkz = new HMMTrigKatz
+      val h = new HMMTrig
+//      h.printIters = Int.MaxValue
       h.learn(p.parse(lCorp).flatten, p.parse(lCorp))
-//      println(s"Learned complete with $i")
-      val ret = h.validate(p.parse(tCorp))
+      hkz.learn(p.parse(lCorp).flatten, p.parse(lCorp))
+      hwb.learn(p.parse(lCorp).flatten, p.parse(lCorp))
+      hknm.learn(p.parse(lCorp).flatten, p.parse(lCorp))
+      hkn.learn(p.parse(lCorp).flatten, p.parse(lCorp))
+      println(s"Learned complete with $i")
+      val r = h.validate(p.parse(tCorp))
+      val rkz = hkz.validate(p.parse(tCorp))
+      val rwb = hwb.validate(p.parse(tCorp))
+      val rknm = hknm.validate(p.parse(tCorp))
+      val rkn = hkn.validate(p.parse(tCorp))
       Files.delete(Paths get lCorp)
       Files.delete(Paths get tCorp)
-      ret
+      (r,rkz,rwb,rknm,rkn)
     })
-    val sum = r.sum
+//    val sum = r.sum
 //    println (s"Time: ${(System.currentTimeMillis - prev)}")
-    println(s"Params: ${d}, Avg: ${sum/ r.size}")
+//    println(s"Params: ${d}, Avg: ${sum/ r.size}")
+
+    println(s"Ada:${r.map(_._1).sum/r.size},Katz:${r.map(_._2).sum/r.size},WB:${r.map(_._3).sum/r.size},KNM:${r.map(_._4).sum/r.size},KN:${r.map(_._5).sum/r.size}")
   }
 
 //        StdIn.readLine()
-//    val h = new HMMTrigKatz()
+//    val h = new trigram.HMMTrigKatz()
 //    h.learn(p.parse("res/lCorp").flatten,p.parse("res/lCorp"))
 //    h.save
-//      val h = new HMMTrigKatz()
+//      val h = new trigram.HMMTrigKatz()
 //      h.load
 //    println(h.predict(Seq(STARTSTR,"you","are","a","bastard",".",STOPSTR).toStream).mkString(" "))
 //        println(h.validate(p.parse("res/tCorp")))

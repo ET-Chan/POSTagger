@@ -1,6 +1,9 @@
+package trigram
+
 import BIDMat.FND
 import BIDMat.MatFunctions._
 import BIDMat.SciFunctions._
+import misc.Utils
 import Utils._
 
 import scala.util.control.NonFatal
@@ -9,7 +12,7 @@ import scala.util.control.NonFatal
  * Created by et on 15/02/15.
  * This is implementing whitten-bell smoothing
  */
-class HmmTrigWB extends HMMTrig {
+class HMMTrigWB extends HMMTrig {
   override def learnTransition(t: Seq[Seq[(String, Tag)]]): Unit = {
     val V = E.size
 //    P = FND(V,V,V)

@@ -1,0 +1,5 @@
+
+
+object WikiXMLApp extends App{
+  
+}

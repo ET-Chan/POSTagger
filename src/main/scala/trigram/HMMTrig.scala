@@ -1,16 +1,16 @@
+package trigram
+
 import java.io._
-import java.nio.file.Files
 
 import BIDMat.MatFunctions._
 import BIDMat.SciFunctions._
 import BIDMat._
+import misc.Utils
 import Utils._
 
 import scala.Predef._
 import scala.collection.immutable.Stream._
 import scala.collection.mutable.HashMap
-import scala.collection.parallel.mutable
-import scala.io.Source
 
 /**
  * Created by et on 10/02/15.
@@ -21,7 +21,7 @@ import scala.io.Source
 
 class HMMTrig extends Serializable{
 //  Mat.checkMKL
-  var printIters = 10
+  var printIters = Int.MaxValue
   var lock = false
   var T1:FMat=null
   var T2:FMat=null
