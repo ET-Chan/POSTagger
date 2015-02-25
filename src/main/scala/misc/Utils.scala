@@ -18,11 +18,13 @@ object Utils {
     def get=v
   }
   //STOPSTR and STARTSTR must be lower case.
-  val STOPSTR = "**end***";val STOPTAG = "END";
-  val STOPSTR1 = "***end1***";val STOPTAG1 = "END1";
+  val STOPSTR = "**end***";val STOPTAG = "END"
+  val STOPSTR1 = "***end1***";val STOPTAG1 = "END1"
 
-  val STARTSTR = "***start0***";val STARTTAG="START0";
-  val STARTSTR1 = "***start1***";val STARTTAG1="START1";
+  val STARTSTR = "***start0***";val STARTTAG="START0"
+  val STARTSTR1 = "***start1***";val STARTTAG1="START1"
 
-
+  val NUMBERSTR = "NUMBER"
+  val RARESTR = "RARE"
+  val UNKNOWNSTR = "UNKNOWN"
 }

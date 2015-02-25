@@ -1,6 +1,7 @@
 import java.io.{FileInputStream, ObjectInputStream, FileOutputStream, ObjectOutputStream}
 
 import scala.util.Random
+import misc.NumberProcessor
 
 
 /**
@@ -13,13 +14,11 @@ import BIDMat.SciFunctions._
 import BIDMat.Solvers._
 import BIDMat.Plotting._
 
-object matTst extends App{
+object tst extends App{
 
-  for{i<- 0 until 10
-      j<-0 until 10
-      k<- 0 until 10}{
-
-    println(i,j,k)
-  }
+  val np = new NumberProcessor
+  println(np.parse("114.332"))
+  println(np.parse("4/23"))
+  println(np.parse("124363462"))
 
 }
