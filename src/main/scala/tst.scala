@@ -1,7 +1,8 @@
 import java.io.{FileInputStream, ObjectInputStream, FileOutputStream, ObjectOutputStream}
 
+import preprocessor.NumberProcessor
+
 import scala.util.Random
-import misc.NumberProcessor
 
 
 /**

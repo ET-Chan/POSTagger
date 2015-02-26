@@ -5,11 +5,11 @@
  * Copyleft (c) 2015.
  */
 
-package misc
+package preprocessor
 
-import Utils._
+import misc.Utils._
 
-class NumberProcessor {
+class NumberProcessor extends PreProcessor{
 
   /**
    * This class is used for transfer string with digits to its uniform representation
@@ -21,7 +21,10 @@ class NumberProcessor {
   val digitR = """([\d]+)""".r //Notice that it is greedy matching,
                                //otherwise it will give us something like
                                //NUMBERNUMBER.NUMBERNUMBER if we input 11.32
-  def parse(s:String):String={
-    digitR.replaceAllIn(s,NUMBERSTR)
+  override def parse(s:String):String={
+    if(s!=STARTSTR && s!=STOPSTR)
+      digitR.replaceAllIn(s,NUMBERSTR)
+    else
+      s
   }
 }
