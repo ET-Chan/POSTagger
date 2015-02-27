@@ -1,8 +1,8 @@
 require 'torch'
+require 'cutorch'
 require 'optim'
 
 
-create_model = require 'create_model'
 
 local function train(opt,data,corrupt_data,model,criterion)
 --every train will only train the model once with these batches.
@@ -21,23 +21,29 @@ local function train(opt,data,corrupt_data,model,criterion)
     end
     grads:zero()
     --optimizable
-    local outputs = model:forward(data)
-    local corrupt_output = model:forward(corrupt_data)
-    local loss = criterion:forward({outputs,corrupt_output},1)
-    local dloss_doutput = criterion:backward({outputs,corrupt_output},1)
-    --investigate another method to do this cleanly
-    model:backward(data,dloss_doutput[1])
-    model:backward(data,dloss_doutput[2])
+--    local outputs = model:forward(data):clone()
+ --   local corrupt_output = model:forward(corrupt_data)
+    local outputs = model:forward({data,corrupt_data})
+    --print("Correct data pred: ".. outputs .. "Corrupt_data_outputs" .. corrupt_output)
     
+    local loss = criterion:forward(outputs,1)
+    local dloss_doutput = criterion:backward(outputs,1)
+
+    --investigate another method to do this cleanly
+    model:backward({data,corrupt_data},dloss_doutput)
+--    model:backward(data,dloss_doutput[1])
+ --   model:backward(corrupt_data,dloss_doutput[2])
     return loss,grads
     
   end
-
-  local optim_state = {learningRate = opt.learningRate}
+ -- local prev_params = params:clone()
+  optim_state = optim_state or {learningRate = opt.learningRate}
   local _,loss = optim.adagrad(feval,params,optim_state)
-  return model,loss
+  loss = loss[1]:float()
+  local afterloss = criterion:forward(model:forward{data,corrupt_data},1)
+  return model,loss,afterloss
   
   
 end
 
-  
+return train
