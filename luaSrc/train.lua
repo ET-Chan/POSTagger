@@ -2,8 +2,6 @@ require 'torch'
 require 'cutorch'
 require 'optim'
 
-
-
 local function train(opt,data,corrupt_data,model,criterion)
 --every train will only train the model once with these batches.
 
@@ -37,11 +35,13 @@ local function train(opt,data,corrupt_data,model,criterion)
     
   end
  -- local prev_params = params:clone()
-  optim_state = optim_state or {learningRate = opt.learningRate}
-  local _,loss = optim.adagrad(feval,params,optim_state)
-  loss = loss[1]:float()
+  optim_state = optim_state or {}
+  local _,loss = optim.adam(feval,params,optim_state)
+  loss = loss[1]
+  local avgloss = loss:sum()/(#loss)[1]
   local afterloss = criterion:forward(model:forward{data,corrupt_data},1)
-  return model,loss,afterloss
+  local avgafterloss = afterloss:sum()/(#afterloss)[1]
+  return model,avgloss,avgafterloss
   
   
 end
