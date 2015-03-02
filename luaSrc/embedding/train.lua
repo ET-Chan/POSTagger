@@ -2,12 +2,11 @@ require 'torch'
 require 'cutorch'
 require 'optim'
 
-local function train(opt,data,corrupt_data,model,criterion)
+local function train(opt,data,corrupt_data,model,criterion,params,grads)
 --every train will only train the model once with these batches.
 
 --data and corrupt_data should be batchsz*contextsz thing
 
-  local params, grads = model:getParameters()
   
 --this could be changed by load up last trained params
   

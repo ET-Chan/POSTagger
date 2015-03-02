@@ -8,7 +8,7 @@ function create_model(opt)
 -- USING THE RANKCRITERION NEEDS TO DEFINE TWO MODEL
 -- BEST WAY TO DO IT IS TO MIRRORING THE PARAMETER OF THE FIRST ONE
 
-  local filename = ("../res/nnembd.net")
+  local filename = ("../../res/nnembd.net")
 
   local mlppt = {}
   local mlp = {}

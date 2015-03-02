@@ -32,11 +32,14 @@ torch.setnumthreads(opt.cputhread)
 
 local model, criterion = create_model(opt)
 
-local wiki = wiki_data.new("../res/wiki/idxCorpus/",opt)
+
+local params, grads = model:getParameters()
+
+local wiki = wiki_data.new("../../res/wiki/idxCorpus/",opt)
 local counter = 0
 
-local filename = ("../res/nnembd.net")
-local optimfilename = ("../res/optim")
+local filename = ("../../res/nnembd.net")
+local optimfilename = ("../../res/optim")
 
 local f = io.open(optimfilename,"r")
 if f~=nil then
@@ -51,7 +54,7 @@ for _ = 1,opt.maxepoch do
   repeat
     counter = counter + 1
     local data,corrupt_data,epochpass = wiki:read(opt)
-    local _,avgloss,avgafterloss = train(opt,data,corrupt_data,model,criterion)
+    local _,avgloss,avgafterloss = train(opt,data,corrupt_data,model,criterion,params,grads)
 
     print ("Mini batch passed:" .. counter .. " Losses: " .. avgloss .." Afterloss: " .. avgafterloss)
     if counter % opt.saveInterval == 0 then

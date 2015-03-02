@@ -20,6 +20,7 @@ class Parser {
   val r = """^\s*\[(.*)\]\s*$""".r
   val r2 = """(.*[^\\])/(.*)""".r
   val r3 = """^\s*$""".r
+  var lowercase = true
   def isEmpty(s:String)=r3.findFirstIn(s).nonEmpty
   val sb = new StringBuilder
   def parse(p:Path):Seq[Seq[Token]]= {
@@ -50,10 +51,11 @@ class Parser {
         .map(s => {
         val mm = r2.findFirstMatchIn(s)
         val m = mm.get
-        //        if(m.group(1)!=null)
-        (m.group(1).toLowerCase, m.group(2))
-        //        else
-        //          (m.group(3).toLowerCase,m.group(4))
+
+        if(lowercase)
+          (m.group(1).toLowerCase, m.group(2))
+        else
+          (m.group(1), m.group(2))
       })
     }catch{
       case NonFatal(e)=>{

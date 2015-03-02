@@ -24,6 +24,7 @@ object Utils {
 
   val STARTSTR = "***start0***";val STARTTAG="START0"
   val STARTSTR1 = "***start1***";val STARTTAG1="START1"
+  val PADDINGTAG = "PADDING"
 
   //these are for debug
   val NUMBERSTR = "NUMBER"
@@ -37,5 +38,13 @@ object Utils {
 
   val RAREIDX = DICTSIZE + 1
   val RARENUMBERIDX = RAREIDX + 1
+  val PADDINGIDX = RARENUMBERIDX + 1
 
+
+
+  //for capitalization
+  val CAPITAL_ALL_LOW = 0
+  val CAPITAL_ALL_UP = 1
+  val CAPITAL_FIRST_UP = 2
+  val CAPITAL_ANY_UP = 3
 }
