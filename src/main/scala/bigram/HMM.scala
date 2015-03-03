@@ -147,7 +147,7 @@ class HMM extends Serializable{
     // c stores count of each correct prediction
       val p = predictSeg(arr.map(_._1).toStream)
       val c = arr.map(_._2)
-      (p.size,p.zip(c).count(e => e._1 == e._2))
+      (p.size - 2,p.zip(c).count(e => e._1 == e._2) - 2)  // TWO PADDINGS ARE ALWAYS CORRECT
     }).unzip
 
     c.sum.toDouble/s.sum

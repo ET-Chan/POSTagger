@@ -43,8 +43,8 @@ object Utils {
 
 
   //for capitalization
-  val CAPITAL_ALL_LOW = 0
-  val CAPITAL_ALL_UP = 1
-  val CAPITAL_FIRST_UP = 2
-  val CAPITAL_ANY_UP = 3
+  val CAPITAL_ALL_LOW = 1
+  val CAPITAL_ALL_UP = 2
+  val CAPITAL_FIRST_UP = 3
+  val CAPITAL_ANY_UP = 4
 }

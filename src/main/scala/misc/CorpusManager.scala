@@ -82,6 +82,8 @@ object CorpusManager {
       })
     }
     def capitalhelper(word:String):Int={
+      //treat words with NUMBER the same
+      //I am lazy to deal with that.
       if(word.forall(_.isLower))
         return CAPITAL_ALL_LOW
       if(word.forall(_.isUpper))

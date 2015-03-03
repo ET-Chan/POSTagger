@@ -1,4 +1,4 @@
---equire("mobdebug").start()
+--require("mobdebug").start()
 
 require 'wsj_reader'
 
@@ -32,15 +32,16 @@ local opt = {
   paddingtagidx = 47,
   pad_while_read = true,
   ratio = 0.9,
-  batchsize = 100,
+  batchsize = 1000,
   learningRate = 1e-1,
-  maxepoch = 10,
+  maxepoch = 1000,
   saveInterval = 5e2,
   cuda = true , -- IN THIS PROBLEM, I DOUBT IF IT WILL BE FASTER
   cputhread = 4,
   timinginterval = 1e10,
   profiling = false,
   profiling_its = 10,
+  capitals_lookuptablesz = 4,--WE ONLY HAVE FOUR TYPES
 }
 
 
@@ -72,7 +73,7 @@ wsj_reader:load(opt)
 --NO CHEATING.
 local trainD,testD = wsj_reader:sample(opt)
 
-for _ = 1,opt.maxepoch do
+for epoch = 1,opt.maxepoch do
  -- local train,test = wsj_reader:sample(opt) <- THIS IS CHEATING
  local train = deepcopy(trainD)
  local test = deepcopy(testD)
@@ -89,22 +90,33 @@ for _ = 1,opt.maxepoch do
     for j = 1,jm do 
       --In this stage, no captitals considered.
       --Should be added later on
-      table.insert(train_mini_words,table.remove(train.sentences))
+      table.insert(train_mini_words,{table.remove(train.sentences),table.remove(train.capitals)})
       table.insert(train_mini_tags,table.remove(train.tags))
     end
     
     for j = 1,test_batchsz do
-     table.insert(test_mini_words,table.remove(test.sentences))
+     table.insert(test_mini_words,{table.remove(test.sentences),table.remove(test.capitals)})
       table.insert(test_mini_tags,table.remove(test.tags))
     end
     
     local _,trainloss = train_model(opt,train_mini_words,train_mini_tags,model,criterion,params,grads)
     local _,testloss,misclasserr = test_model(opt,test_mini_words,test_mini_tags,model,criterion)
     
-    print("Train loss: "..trainloss .. " ,Test loss: " .. testloss .." Mis' Error: " .. misclasserr .. " Left: ".. #train.sentences)
+    print("Train loss: "..trainloss .. " ,Test loss: " .. testloss .." Mis' Error: " .. misclasserr .. " Left: ".. #train.sentences .. " Epoch: "..epoch)
   end
   
 end
 
+print("=========FINAL RESULT========")
 
+local testFW = {}
+local testFT = {}
+for j = 1,#testD.sentences do
+   table.insert(testFW,{table.remove(testD.sentences),table.remove(testD.capitals)})
+   table.insert(testFT,table.remove(testD.tags))
+end
+
+
+local _,_,missclasserr = test_model(opt,testFW,testFT,model,criterion,params,grads)
+print("Accuracy: " .. 1-missclasserr)
 

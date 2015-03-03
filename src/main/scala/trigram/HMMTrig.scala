@@ -313,7 +313,7 @@ class HMMTrig extends Serializable{
 //        sb.append(s"Wrong: ${arr.map(_._1).zip(pp).mkString(" ")}\n")
 //        sb.append("---------------------------------------------------\n")
 //      }
-      (p.size,pp.zip(c).count(e => e._1 == e._2))
+      (pp.size - 2,pp.zip(c).count(e => e._1 == e._2) - 2) // IGNORE THE PADDINGS
     }).unzip
 //    val pw = new PrintWriter(new File("log.txt"))
 //    pw.print(sb)

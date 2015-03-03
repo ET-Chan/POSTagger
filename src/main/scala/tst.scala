@@ -32,6 +32,6 @@ object tst extends App{
 //
 //  scala.tools.nsc.io.File("./res/tagmap.json").writeAll(compact(render(tagmap)))
 //  scala.tools.nsc.io.File("./res/rtagmap").writeAll(compact(render(rTagMap)))
-  CorpusManager.convertToLua("./res/outcorp","./res/outcorpulua")
+  CorpusManager.convertToLua("./res/outcorp","./res/outcorplua")
 
 }
