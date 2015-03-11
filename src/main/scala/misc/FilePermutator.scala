@@ -20,14 +20,28 @@ import scala.util.Random
  * Created by et on 27/02/15.
  */
 object FilePermutator extends App{
+  /**
+   * This object is used for shuffling the wikipedia data
+   * to make the training cover as much data as it could in
+   * an incomplete epoch
+   * */
   Random.setSeed(System.currentTimeMillis())
 
   def shuffle(s:Path,t:Path)={
+    /**
+    * Shuffle the data from s based on line delimiter
+     * and write it to t
+    * */
     val bw = new BufferedWriter(new FileWriter(t.path))
     bw.write(Random.shuffle(Source.fromFile(s.path).getLines()).mkString("\n"))
     bw.close()
   }
   def shuffleAll(path:Path)={
+    /**
+     * Shuffle all the data inside path
+     * and rewrite it to the shuffled version
+     * The old ones will be overwritten.
+     * */
     val sPath = reflect.io.Path(path.toString)
     sPath.walk.foreach(p=>{
       val tmpFile = Path(Random.nextInt.toString)
@@ -37,6 +51,11 @@ object FilePermutator extends App{
     })
   }
   def merge(path:Path, shuffle:Boolean = true,chunks:Int,target:String)={
+    /**
+     * Transform all files inside path to multiple files in target
+     * If shuffle is true, then it will also randomized the writing order
+     * Chunks specifies how large is for each target file.
+     * */
     val paths = new ArrayBuffer[Iterator[String]]()
   //  val bw = new BufferedWriter(new FileWriter(target))
     paths ++= path.walk.map(p=>Source.fromFile(p.path).getLines())
@@ -87,11 +106,19 @@ object FilePermutator extends App{
   }
 
   def shatter(path:Path,chunks:Int,shuffle:Boolean,targetPath:Path):Unit={
+    /**
+     * Shatter a data from single file into multiple files.
+     * */
     assert(path.isFile)
     shatter(Source.fromFile(path.path).getLines(),chunks,shuffle,targetPath)
   }
 
   def shatter(it:Iterator[String],chunks:Int, shuffle:Boolean,targetPath:Path):Unit={
+    /**
+     * Shatter a data stream it to multiple files inside targetPath
+     * The size of each file is specfied by chunks
+     * If shuffle is on, then the writing order is different as well
+     * */
 
     val ab = new ArrayBuffer[String]()
 //    val it = Source.fromFile(path.path).getLines()

@@ -9,8 +9,8 @@ import BIDMat.MatFunctions._
 class HMMWB extends HMM{
 
   /**
-   * Created by et on 15/02/15.
    * This is implementing whitten-bell smoothing
+   * based on chen and goodman paper.
    */
     override def learnTransition(t: Seq[Seq[(String, Tag)]]): Unit = {
       val V = E.size

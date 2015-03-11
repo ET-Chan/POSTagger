@@ -32,7 +32,7 @@ function friendlyGetRank(str,max)
   
 end
 
-t = friendlyGetRank("pain",50)
+t = friendlyGetRank("hitler",5)
 
 for _,v in pairs(t) do
   print(v[1] ..": ".. v[2])

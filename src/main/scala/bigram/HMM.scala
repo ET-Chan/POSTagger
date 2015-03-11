@@ -19,15 +19,31 @@ import scala.collection.mutable.HashMap
 
 
 class HMM extends Serializable{
+  /*
+  * This is a bigram HMM
+  * Also, it is a base class for all other HMM bigram models
+  * with different smoothing techniques
+  * */
   Mat.checkMKL
   var lock = false
+  //unigram, transition table
   var T1:FMat=null
+  //bigram
   var T2:FMat=null
+  //transition probabilities
   var P:DMat = null
+  //Emission probability table
+  //Query by the tag index and the word
   var E:Array[HashMap[String,Double]] = null
-  var M:Map[String,Int] = null//table for tagToIdx
+  //M is a map to map string to their indicies
+  var M:Map[String,Int] = null
+  //BM, is a reversed mapping
   var BM:Array[String] = null//table for idxToTag
   def learn(wd:Seq[Token],bi:Seq[Seq[Token]]):Unit={
+    /*learn the model,
+   *and firstly learn the emission probability of the model
+   *and then the transition probability
+   */
     if(lock) throw new Exception("The model is learned!")
     learnEmission(wd)
     learnTransition(bi)
@@ -35,6 +51,9 @@ class HMM extends Serializable{
   }
 
   def count(t:Seq[Seq[Token]]):Unit={
+    /*
+   * count the n-grams, and store the result to T1, T2, T3
+   * */
     val sz = E.size
     T1 = zeros(sz,1)
     T2 = zeros(sz,sz)
@@ -59,9 +78,14 @@ class HMM extends Serializable{
 
 
   def learnTransition(t:Seq[Seq[Token]]):Unit={
+    /*
+ * Learn the transition probabilities
+ * The default smoothing technique used is adaptive smoothing.
+ * */
+    val delta = 0.0
     P = dzeros(E.size,E.size)
     count(t)
-    T2 += 1.0
+    T2 += delta
     T1 += E.size
     P = T2/T1
     P(toIdx(STOPTAG),?) = 0.0//fix the end NaN problem, otherwise it will pollute
@@ -69,24 +93,12 @@ class HMM extends Serializable{
 
   }
 
-//  def learnTransition(t:Seq[Token]):Unit={
-//    T = dzeros(E.size,E.size)
-//    val startID = toIdx(STARTTAG);val endID = toIdx(STOPTAG)
-//    val ts = t.map(_._2).map(toIdxArr)//map to int tag
-//    for{ (ps,cs)<- ts.zip(ts.tail)//words may have multiple tags, iterate all of them
-//          p<-ps
-//          c<-cs
-//    }{
-//      if(!((p==startID && c==endID) | (p==endID && c==startID))) {
-//        //Not counting START,END. it is ugly fix, but works.
-//        T(p, c) += 1
-//      }
-//    }
-//    val Ts = sum(T,2)//sum along with column, return a row vector
-//    T = T/Ts
-//    T(toIdx(STOPTAG),?) = 0.0//fix the end NaN problem, otherwise it will pollute
-//  }
+
   def learnEmission(t:Seq[Token]):Unit={
+    /*
+* learn emission probability
+* exactly calculating as the lecture notes intructed.
+* */
     val m = t.flatMap(e => {
               val (s, tag) = e
               val t = Seq(s, s).zip(tag.split("""\|""").toSeq)//it is possible that there exists multiple tag.
@@ -112,8 +124,12 @@ class HMM extends Serializable{
     }
   }
   def predict(su:Stream[String]):Stream[Tag]={
-    //Doing prediction, automatically cut off from START to END
-    //sanity-check
+    /*
+   * Do prediction
+   * At this stage, all input will firstly transformed to lowercase
+   * then split to sentences, then input to predictSeg to get the prediction
+   * results
+   * */
     val sl = su.map(_.toLowerCase)
     if(sl.isEmpty) return Stream.Empty
     assert(sl.head == STARTSTR)
@@ -142,6 +158,10 @@ class HMM extends Serializable{
   }
 
   def validate(su:Seq[Seq[Token]]):Double={
+    /*predict the input sequence su, and
+   *validate it with actual tags.
+   *calculate the per-word accuracy
+   */
     val (s,c) = su.map(_.toArray).map(arr=>{
     //each entry of s stores count of each section,
     // c stores count of each correct prediction
@@ -154,6 +174,10 @@ class HMM extends Serializable{
   }
 
   private def predictSeg(s:Stream[String]):Stream[Tag]={
+    /*
+    * viberti matrix form
+    * it unfold one layer for-loop by using matrix multiplication
+    * */
     val T = P
     val arr = s.toArray
     val sz = arr.size

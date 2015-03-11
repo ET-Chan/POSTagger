@@ -28,11 +28,12 @@ local opt = {
   wdvecdim = 50,
   contextsize = 5,
   hu1sz = 300,
+  hu2sz = 135,
   tagsize = 46 + 1,
   paddingtagidx = 47,
   pad_while_read = true,
   ratio = 0.9,
-  batchsize = 1000,
+  batchsize = 100,
   learningRate = 1e-1,
   maxepoch = 1000,
   saveInterval = 5e2,
@@ -41,7 +42,8 @@ local opt = {
   timinginterval = 1e10,
   profiling = false,
   profiling_its = 10,
-  capitals_lookuptablesz = 4,--WE ONLY HAVE FOUR TYPES
+  capitals_lookuptablesz = 5,--WE ONLY HAVE FOUR TYPES
+  padsize = 2,
 }
 
 
@@ -95,7 +97,7 @@ for epoch = 1,opt.maxepoch do
     end
     
     for j = 1,test_batchsz do
-     table.insert(test_mini_words,{table.remove(test.sentences),table.remove(test.capitals)})
+      table.insert(test_mini_words,{table.remove(test.sentences),table.remove(test.capitals)})
       table.insert(test_mini_tags,table.remove(test.tags))
     end
     
@@ -104,7 +106,16 @@ for epoch = 1,opt.maxepoch do
     
     print("Train loss: "..trainloss .. " ,Test loss: " .. testloss .." Mis' Error: " .. misclasserr .. " Left: ".. #train.sentences .. " Epoch: "..epoch)
   end
-  
+  test = deepcopy(testD)
+  local testFW = {}
+  local testFT = {}
+  for j = 1,#test.sentences do
+     table.insert(testFW,{table.remove(test.sentences),table.remove(test.capitals)})
+      table.insert(testFT,table.remove(test.tags))
+  end
+  local _,testloss,misclasserr = test_model(opt,testFW,testFT,model,criterion)
+  print ("=======FINAL RESULT FOR THIS EPOCH=============")
+  print("Test loss: " .. testloss .." Accuracy: " .. 1 - misclasserr .. " Epoch: "..epoch)
 end
 
 print("=========FINAL RESULT========")

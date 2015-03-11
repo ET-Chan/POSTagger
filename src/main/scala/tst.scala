@@ -12,6 +12,10 @@ import org.json4s.JsonDSL._
 import scala.reflect.io.Path
 
 object tst extends App{
+  /*
+  * This is an obsolete object
+  * will be deleted in next version.
+  * */
 //
 //  val corpName = "./res/outcorp"
 //  val tagSet = new mutable.HashSet[String]()

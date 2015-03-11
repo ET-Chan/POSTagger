@@ -14,6 +14,10 @@ import scala.collection.mutable.ArrayBuffer
  * Created by et on 26/02/15.
  */
 class ProcessorHub {
+  /**
+   * This hub is used for preprossing the corpus before feeding it to the model
+   * The preprocessor is executed in sequential order.
+   * */
   val processors = new ArrayBuffer[PreProcessor]
   def register(i:PreProcessor):Unit={
     processors += i

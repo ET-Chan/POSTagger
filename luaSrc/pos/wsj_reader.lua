@@ -25,14 +25,14 @@ function wsj_reader:load(opt)
     assert(#words == #capts)
     --PADDING, if on
     if(opt.pad_while_read) then
-      local padsz = torch.floor(opt.contextsize / 2)
+      local padsz = opt.padsize
       for i = 1,padsz do
         table.insert(words,opt.paddingidx)
         table.insert(words,1,opt.paddingidx)
     --    table.insert(tags,opt.paddingtagidx)
     --    table.insert(tags,1,opt.paddingtagidx) -- NO NEED FOR TAG...
-        table.insert(capts,0)
-        table.insert(capts,1,0)
+        table.insert(capts,5) --append
+        table.insert(capts,1,5)--prepend
       end
       
     end

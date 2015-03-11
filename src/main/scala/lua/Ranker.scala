@@ -18,6 +18,10 @@ import scala.sys.process.Process
  * Created by et on 01/03/15.
  */
 class Ranker  extends App{
+  /**
+   * This is an obsolete object
+   * Will be deleted in next version.
+   * */
   val pio = new ProcessIO(processInput,processOutput,_=>{})
 
   private def processInput(os:OutputStream):Unit={

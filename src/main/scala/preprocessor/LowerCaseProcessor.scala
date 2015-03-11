@@ -11,6 +11,9 @@ package preprocessor
  * Created by et on 26/02/15.
  */
 class LowerCaseProcessor extends PreProcessor{
+  /**
+   * Transform all the words to lowercase
+   * */
   override def parse(s: String): String = {
     s.toLowerCase
   }

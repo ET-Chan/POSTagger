@@ -18,6 +18,10 @@ import scala.io.Source
  * Created by et on 26/02/15.
  */
 object JsonIdxReader {
+  /**
+   * This is for interfacing with json-based format
+   * Getting the word-indicies mapping and reversed mapping from the json file
+   * */
   implicit val formats = DefaultFormats
 
   def getIdx(p:String = "res/wordIdx.json"):Map[String,Int]={

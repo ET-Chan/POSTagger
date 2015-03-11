@@ -9,6 +9,10 @@ import misc.Utils._
  * Created by et on 19/02/15.
  */
 class HMMKN extends HMM{
+  /*
+* This is Knesey-Ney smoothing
+* implemeted base on chen and goodman paper
+* */
   override def learnTransition(t: Seq[Seq[(String, Tag)]]): Unit = {
     val V = E.size
     count(t)

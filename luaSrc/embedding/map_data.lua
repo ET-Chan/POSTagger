@@ -13,8 +13,8 @@ function readjson(path)
   return value
 end
 
-local mapname = "../res/wordIdx.json"
-local rmapname = "../res/rWordIdx.json"
+local mapname = "../../res/wordIdx.json"
+local rmapname = "../../res/rWordIdx.json"
 
 local map = readjson(mapname)
 local rmap = readjson(rmapname)

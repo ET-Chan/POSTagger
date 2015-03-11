@@ -3,11 +3,11 @@ require 'fbcunn'
 function create_model(opt)
   
 -- MODEL:
--- LOOKUP TABLE -> CONV -> TANH -> CONV -> SOFTMAX
+-- LOOKUP TABLE -> CONV -> TANH -> SOFTMAX
 
 
 --               ->LOOKUP TABLE WORDS -> 
--- SPLITTABLE ->                          -> JOINTABLE->CONV ->TANH->CONV->SOFTMAX
+-- SPLITTABLE ->                          -> JOINTABLE->CONV ->TANH>SOFTMAX
 --               ->LOOKUP TABLE CAPTS ->
 
 -- THIS NETWORK ACCEPTS NO MINIBATCH.
@@ -24,6 +24,7 @@ function create_model(opt)
     local wdvecdim = opt.wdvecdim
     local contextsz = opt.contextsize
     local hu1sz = opt.hu1sz
+    local hu2sz = opt.hu2sz
     local margin = opt.margin
     local tagsize = opt.tagsize
     local captsize = opt.capitals_lookuptablesz
@@ -52,17 +53,22 @@ function create_model(opt)
     mlp:add(jointtw)
     -- L * (wdvecdim + captsz)
     
-    --Second stage, convolution
+    --Second stage, convolution twice
     local conv1 = nn.TemporalConvolution(wdvecdim + captsize,hu1sz,contextsz)
-    local hth = nn.HardTanh()
+    local hth = nn.ReLU()
     --L* (hu1sz * kd)
-    
+    --local conv11 = nn.TemporalConvolution(hu1sz,hu2sz,1)
+    --local hth2 = nn.ReLU()
     --Third stage, to tags
     local conv2 = nn.TemporalConvolution(hu1sz,tagsize,1) -- WINDOWS SZ IS ONLY ONE.
     local lsm = nn.LogSoftMax()
     --final output of the model is L * tagsize
     mlp:add(conv1)
     mlp:add(hth)
+    
+   -- mlp:add(conv11)
+   -- mlp:add(hth2)
+    
     mlp:add(conv2)
     mlp:add(lsm)
     --final output

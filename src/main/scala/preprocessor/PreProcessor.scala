@@ -11,5 +11,9 @@ package preprocessor
  * Created by et on 26/02/15.
  */
 trait PreProcessor {
+  /**
+   * This trait is for processorhub
+   * For preprocessing the input before feeding the corpus to the model
+   * */
   def parse(s:String):String
 }

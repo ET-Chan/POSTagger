@@ -16,14 +16,26 @@ import misc.Utils._
  * Created by et on 1/31/15.
  */
 object CorpusManager {
+  /*
+  * This object is used for manging the corpus provided
+  * */
   val log = Logger.getLogger("CM")
   def combineAll(p:Path,t:Path)={
+    /*
+     *combine all the data inside p
+     * and output them as a single file to t
+    */
     val pw = new PrintWriter(t.path)
     val s = p.walk.filter(_.path.toLowerCase.endsWith("pos")).map(p=>Source.fromFile(p.path).mkString).foreach(pw.println(_))
     pw.close()
   }
   val DefaultDelim = "==============================================\n"
   def split(prob:Double,s:Path,l:Path,r:Path,d:String = DefaultDelim)= {
+    /*
+    * Split the single file corpus, to two files
+    * with the ratio params,
+    * prob*|s| data will goto l, while the remain will goto r
+    * */
     val p = new Parser()
     assert(prob<1.0 && prob>0.0)
     val rand = new Random(System.currentTimeMillis())
@@ -38,6 +50,10 @@ object CorpusManager {
     lpw.close();rpw.close()
   }
   def reportAllException(p:Path)={
+    /*
+    * It is for cleaning the dataset
+    * abandoned currently.
+    * */
     log.info("HELLO")
     val par = new Parser
     try {
@@ -56,10 +72,14 @@ object CorpusManager {
   }
 
   def convertToLua(p:Path,t:Path)={
-    //have three lines
-    //first line is the sentence word
-    //second line is the tag idx
-    //third line is the capitilization
+    /*
+    * This is to convert the data in provided form
+    * to lua form, for NN learning
+    * Each sentence will be transformed to three lines
+    * the first one is  sentence word indicies
+    * the second line is the tag indicies
+    * the third line is the one-hot vector, encoding the capitialization.
+    * */
 
     assert(p.isFile)
     implicit val formats = DefaultFormats
@@ -95,6 +115,15 @@ object CorpusManager {
     }
 
     def flatten(s:Stream[Token]):Stream[Stream[Token]]={
+      /*
+      * the name somehow is misleading
+      * this is not flatten, instead, it is to process the words with
+      * multiple tags
+      * Say for example.
+      * If a sentence have tags like, DT, JJ|NNP, NNP
+      * then this method will generate
+      * [[DT,JJ,NNP],[DT,NNP,NNP]]
+      * */
       val (pre,suff) = s.span{case (_,tag)=> !tag.contains("|")}
       var ret:Stream[Stream[Token]] = null
       if(suff.isEmpty)

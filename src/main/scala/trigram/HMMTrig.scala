@@ -20,19 +20,38 @@ import scala.collection.mutable.HashMap
  */
 
 class HMMTrig extends Serializable{
-//  Mat.checkMKL
+  /*
+  * This is a trigram HMM
+  * Also, it is a base class for all other HMM trigram models
+  * with different smoothing techniques
+  * */
+
+
+  //This is to set the interval of printing validation information.
   var printIters = Int.MaxValue
   var lock = false
+  //unigram, transition table
   var T1:FMat=null
+  //bigram
   var T2:FMat=null
+  //trigram
   var T3:FND=null
-//  var PP = Array.ofDim[Double](0,0,0)
-//  var T:DMat = null
+
+  //transition probabilities
   var P:FND=null
+  //Emission probability table
+  //Query by the tag index and the word
   var E:Array[HashMap[String,Double]] = null
+  //M is a map to map string to their indicies
   var M:Map[String,Int] = null//table for tagToIdx
+  //BM, is a reversed mapping
   var BM:Array[String] = null//table for idxToTag
   def learn(wd:Seq[Token],tr:Seq[Seq[Token]]):Unit={
+    /*learn the model,
+    *we pad one more dummy word to the start and the end of a sentence respectively
+    *and firstly learn the emission probability of the model
+    *and then the transition probability
+    */
     if(lock) throw new Exception("The model is learned!")
     def padding(e:Token):Seq[Token]={
       if(e._2==STARTTAG)
@@ -58,9 +77,16 @@ class HMMTrig extends Serializable{
 //    lock = true
   }
   def cleanTransTable()={
-    T1 = null;T2=null;T3=null;
+    /*
+    * Clean the transition tables
+    * As after learning, they are useless
+    * */
+    T1 = null;T2=null;T3=null
   }
   def count(t:Seq[Seq[Token]]):Unit={
+    /*
+    * count the n-grams, and store the result to T1, T2, T3
+    * */
     val sz = E.size
     T1 = zeros(sz,1)
     T2 = zeros(sz,sz)
@@ -90,8 +116,12 @@ class HMMTrig extends Serializable{
   }
 
   def learnTransition(t:Seq[Seq[Token]]):Unit={
+    /*
+    * Learn the transition probabilities
+    * The default smoothing technique used is adaptive smoothing.
+    * */
     val sz = E.size
-    val delta:Float = 1
+    val delta:Float = 0
     P = FND(sz,sz,sz)
     count(t)
     //learn adaptively
@@ -113,6 +143,10 @@ class HMMTrig extends Serializable{
 //    }
 //  }
   def learnEmission(t:Seq[Token]):Unit={
+    /*
+    * learn emission probability
+    * exactly calculating as the lecture notes intructed.
+    * */
     val m = t.flatMap(e => {
       val (s, tag) = e
       val t = Seq(s, s).zip(tag.split("""\|""").toSeq)//it is possible that there exists multiple tag.
@@ -138,48 +172,64 @@ class HMMTrig extends Serializable{
     }
   }
   def predict(su:Stream[String]):Stream[Tag]={
-    //Doing prediction, automatically cut off from START to END
-    //sanity-check
+    /*
+    * Do prediction
+    * At this stage, all input will firstly transformed to lowercase
+    * then split to sentences, then input to predictSeg to get the prediction
+    * results
+    * */
     val sl = su.map(_.toLowerCase)
+    /*
+    * Recursive termination
+    * */
     if(sl.isEmpty) return Stream.Empty
+
+    //sanity-check
     assert(sl.head == STARTSTR)
 
+    //Splitting the words based on STARTSTR
     val (hl,tl) = sl.tail.span(!_.contentEquals(STARTSTR))//split sl into two streams, first streams stop at next STOPSTR,
-    // second one starts at next STARTSTR
+    //second one starts at next STARTSTR
     //predict a short segment
     predictSeg(STARTSTR #:: hl.toStream).append(predict(tl))
   }
 
-  //viberti iterative
-  //matrix is just too freaking slow, because of non-fully supported sparse matrix in scala
-  //we will just rewrite an iterative version of it
   private def predictSeg(s:Stream[String]):Stream[Tag]= {
+    /*
+    * viberti matrix form
+    * it unfold one layer for-loop by using matrix multiplication
+    * */
     val V = E.size
     //First of all, the string must be prepend and append with STARTSTR and STOPSTR respectively.
     assert(s.head == STARTSTR && s.last == STOPSTR)
     //PREPAND STARTSTR1 and APPEND STOPSTR1, reduce trivial cases
     val sp = ((STARTSTR1 #:: s) :+ STOPSTR1).toArray
     val sz = sp.length
-    val R = Array.tabulate(sz){_=>izeros(V,V)}
 
+    //R is backtrace matrix
+    val R = Array.tabulate(sz){_=>izeros(V,V)}
+    //For two dummy padding, it is not useful to backtrace them.
     R(0)(?) = -1
     R(1)(?) = -1
+    //prev vector stores the previous highest probabilities terms
     val prev = dzeros(V,V)
     val PP = Array.tabulate(V){i=>{
         DMat(P(?,?,i).toFMat(V,V))
       }
     }
-    prev(toIdx(STARTTAG1),toIdx(STARTTAG))=1.0//everything is possible
+
+    prev(toIdx(STARTTAG1),toIdx(STARTTAG))=1.0
+    //curr is for storing the current word probabilities for different tags combination.
     val curr = dzeros(V,V)
-    for(i<-2 until sz){//No need to start from 0
-      val ep = getEmissionProb(sp(i))
-      for(k<-0 until V){
-        val (maxv,maxi) = maxi2(prev *@ PP(k))
-        curr(?,k) = maxv^*ep(k)//problematic code
-        R(i)(k,?) = maxi
+    for(i<-2 until sz){//for every word
+      val ep = getEmissionProb(sp(i))//get its emission probability for every tag
+      for(k<-0 until V){//and calculate the probabilities for every tag
+        val (maxv,maxi) = maxi2(prev *@ PP(k)) // *@ is element-wise multiplication, and get the max probability and index
+        curr(?,k) = maxv^*ep(k)//assign them to current vector, this odd style of storage is bacause of performance
+        R(i)(k,?) = maxi //and assign maxi to traceback vector.
       }
 
-      prev <-- curr
+      prev <-- curr //assign value from curr to prev.
     }
     //traceback
     def max(mat:DMat):(Int,Int)={
@@ -197,77 +247,14 @@ class HMMTrig extends Serializable{
     }
     val res = new Array[(Int,Int)](sz)
     res(sz - 1) = max(curr)
-    for(i<-sz-2 to 1 by -1){//0th and 1st is unnecessary, it must be
+    for(i<-sz-2 to 1 by -1){//0th and 1st is unnecessary, it must be the dummy words
       val (j,k) = res(i+1)
       res(i) = (R(i+1)(k,j),j)
     }
     res(0) = (-1,toIdx(STARTTAG1))
-    res.map(e=>toTag(e._2)).toStream
-
-    //    res(sz - 1) = maxi2(dp(?,0))._2(0,0)
-    //    res(0) = toIdx(STARTTAG1)
-//    Array("").toStream
+    res.map(e=>toTag(e._2)).toStream//map back to their string representation.
 
   }
-//  private def predictSeg(s:Stream[String]):Stream[Tag]={
-//    val V = E.size
-//    assert(s.head == STARTSTR && s.last == STOPSTR)
-//    //PREPAND STARTSTR1 and APPEND STOPSTR1, reduce trivial cases
-//    val sp = ((STARTSTR1 #:: s) :+ STOPSTR1).toArray
-//    val sz = sp.length
-//    val R = FND(sz,V,V)
-//    R(0,?,?) = -1
-//    R(1,?,?) = -1
-//    val prev = dzeros(V,V)
-//    val curr = dzeros(V,V)
-//    prev(toIdx(STARTTAG1),toIdx(STARTTAG)) = 1.0 // other is impossible
-//
-//    for{w<-2 until sz}{
-//      val ep = getEmissionProb(sp(w))
-//      for{k<- 0 until V
-//          j<- 0 until V}{
-//        //determining the curr(j,k)
-//        var max = Double.MinValue
-//        for{i<- 0 until V}{
-//          val transProb = prev(i,j) * PP(i)(j)(k)
-//          if(transProb > max){
-//            max = transProb ; R(w,j,k) = i
-//          }
-//        }
-//        curr(j,k) = max * ep(k)
-//      }
-//      prev <-- curr
-//    }
-//    //traceback
-//    def max(mat:DMat):(Int,Int)={
-//      val (m,n) = size(mat)
-//      var (x,y) = (-1,-1)
-//      var maxv = Double.MinValue
-//      for{i<-0 until m
-//          j<-0 until n}{
-//        if(mat(i,j)>maxv){
-//          maxv = mat(i,j)
-//          x = i;y=j
-//        }
-//      }
-//      (x,y)
-//    }
-//    val res = new Array[(Int,Int)](sz)
-//    res(sz - 1) = max(curr)
-//    for(i<-sz-2 to 1 by -1){//0th and 1st is unnecessary, it must be
-//      val (j,k) = res(i+1)
-//      res(i) = (R(i+1,j,k).toInt,j)
-//    }
-//    res(0) = (-1,toIdx(STARTTAG1))
-//    res.map(e=>toTag(e._2)).toStream
-//
-//    //    res(sz - 1) = maxi2(dp(?,0))._2(0,0)
-//    //    res(0) = toIdx(STARTTAG1)
-////    Array("").toStream
-//
-//
-//
-//  }
 
 
   //we need a pair of method, to transform (i,j) into a monster int
@@ -275,6 +262,9 @@ class HMMTrig extends Serializable{
   private def uni2Bi(i:Int):(Int,Int)=(i/E.size,i%E.size)
 
   private def getEmissionProbTri(s:String):DMat={
+    /*
+    * This is an abandoned method, to get the trigram emission probability.
+    * */
     val V = E.size
     val epb = getEmissionProb(s)
     //epb is a column vector save the tag emission probability with respect to s
@@ -295,6 +285,10 @@ class HMMTrig extends Serializable{
     r
   }
   def validate(su:Seq[Seq[Token]]):Double={
+    /*predict the input sequence su, and
+    *validate it with actual tags.
+    *calculate the per-word accuracy
+    */
     var i = 1
     val sb = new StringBuilder()
     val (s,c) = su.map(arr=>{
@@ -315,9 +309,6 @@ class HMMTrig extends Serializable{
 //      }
       (pp.size - 2,pp.zip(c).count(e => e._1 == e._2) - 2) // IGNORE THE PADDINGS
     }).unzip
-//    val pw = new PrintWriter(new File("log.txt"))
-//    pw.print(sb)
-//    pw.close()
     c.sum.toDouble/s.sum
   }
 

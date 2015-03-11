@@ -16,6 +16,11 @@ class ParseException extends Exception{
   var path:Path = null
 }
 class Parser {
+  /*
+  * This parser is to parse the treebank data provided
+  *
+  *
+  * */
 
   val r = """^\s*\[(.*)\]\s*$""".r
   val r2 = """(.*[^\\])/(.*)""".r
@@ -24,6 +29,10 @@ class Parser {
   def isEmpty(s:String)=r3.findFirstIn(s).nonEmpty
   val sb = new StringBuilder
   def parse(p:Path):Seq[Seq[Token]]= {
+    /*
+    * Take path, output a stream of a section (sentence),
+    * represented by a stream of token.
+    * */
       val delim = """=+"""
       val arr = split(Source.fromFile(p.path).getLines().toStream, delim)
     try {
@@ -36,14 +45,26 @@ class Parser {
     }
   }
   def split(s:Seq[String],delim:String):Stream[String]={
+    /*
+    * Split s by a delimiter, and form a stream of strings.
+    * */
     val (l1,l2) = s.span(!_.matches(delim))
     l1.mkString("\n") #:: (if(l2.nonEmpty) split(l2.tail,delim) else Empty)
   }
   private def parseSection(s:String):Section={
+    /*
+    * section is separated by delimiter "=============================", this function is to
+    * parse a section to a stream of token.
+    * */
     (STARTSTR,STARTTAG) #:: (Source.fromString(s).getLines().filter(!isEmpty(_))
     .flatMap(parseLine).toStream :+ (STOPSTR,STOPTAG) )
   }
   private def parseLine(s:String):Seq[Token]={
+    /*
+    * for each line, tokenize them and return a sequence of tokens
+    * each token is represented as a tuple (String,Tag), namely,
+    * the spelling of the word and the tag of it.
+    * */
     try {
       val tr = r.findFirstMatchIn(s)
       val ss = if(tr.nonEmpty) tr.get.group(1) else s

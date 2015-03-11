@@ -6,6 +6,9 @@ import java.nio.file.Path
  * Created by et on 1/31/15.
  */
 object Utils {
+  /*
+  * Utils is used to define all constants used in this project
+  * */
   type Tag = String
   type Token = (String,Tag)
   type Section = Seq[Token]

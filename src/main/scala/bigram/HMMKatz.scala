@@ -10,7 +10,10 @@ import Utils._
 * Created by et on 19/02/15.
 */
 class HMMKatz(K2:Int=4) extends HMM{
-
+  /*
+  * This is Katz smoothing
+  * implemeted base on chen and goodman paper
+  * */
   override def learnTransition(t: Seq[Seq[Token]]): Unit = {
     val V = E.size
     count(t)
